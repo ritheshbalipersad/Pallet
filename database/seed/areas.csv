@@ -1,0 +1,11 @@
+area_id,name,type,parent_area_id,capacity
+1,Warehouse A,Warehouse,,500
+2,Warehouse B,Warehouse,,500
+3,Loading Dock A,Dock,1,50
+4,Loading Dock B,Dock,1,50
+5,Cold Storage,Cold,2,200
+6,Quarantine,Quarantine,1,30
+7,Staging Zone,Staging,1,100
+8,Shipping Bay A,Bay,1,40
+9,Shipping Bay B,Bay,1,40
+10,Receiving,Receiving,2,80

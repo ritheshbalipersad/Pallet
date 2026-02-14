@@ -1,0 +1,311 @@
+openapi: 3.0.3
+info:
+  title: PalletMS API
+  description: Pallet tracking API with RBAC, movements, and reporting
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  security:
+    - bearerAuth: []
+  schemas:
+    Pallet:
+      type: object
+      properties:
+        palletId:
+          type: integer
+          format: int64
+        barcode:
+          type: string
+        type:
+          type: string
+        size:
+          type: string
+        conditionStatus:
+          type: string
+          enum: [Good, Damaged, Lost, Stolen, Unfit]
+        currentAreaId:
+          type: integer
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        createdBy:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Area:
+      type: object
+      properties:
+        areaId:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        parentAreaId:
+          type: integer
+          nullable: true
+        capacity:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    Movement:
+      type: object
+      properties:
+        movementId:
+          type: integer
+        palletId:
+          type: integer
+        fromAreaId:
+          type: integer
+          nullable: true
+        toAreaId:
+          type: integer
+        outBy:
+          type: integer
+        outAt:
+          type: string
+          format: date-time
+        inBy:
+          type: integer
+          nullable: true
+        inAt:
+          type: string
+          format: date-time
+          nullable: true
+        eta:
+          type: string
+          format: date-time
+          nullable: true
+        movementStatus:
+          type: string
+          enum: [Pending, Completed, Cancelled]
+        notes:
+          type: string
+          nullable: true
+    User:
+      type: object
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        roleId:
+          type: integer
+        isActive:
+          type: boolean
+    CreatePalletRequest:
+      type: object
+      required: [barcode, currentAreaId]
+      properties:
+        barcode:
+          type: string
+        type:
+          type: string
+        size:
+          type: string
+        currentAreaId:
+          type: integer
+        owner:
+          type: string
+    CreateMovementRequest:
+      type: object
+      required: [palletId, toAreaId]
+      properties:
+        palletId:
+          type: integer
+        toAreaId:
+          type: integer
+        eta:
+          type: string
+          format: date-time
+        notes:
+          type: string
+    ConfirmMovementRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+
+paths:
+  /auth/login:
+    post:
+      summary: Login (JWT)
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Returns JWT and user info
+  /auth/profile:
+    get:
+      summary: Current user profile
+
+  /areas:
+    get:
+      summary: List areas
+    post:
+      summary: Create area
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Area'
+  /areas/{id}:
+    get:
+      summary: Get area by ID
+    patch:
+      summary: Update area
+    delete:
+      summary: Delete area
+
+  /pallets:
+    get:
+      summary: List pallets (paginated, filterable)
+      parameters:
+        - name: barcode
+          in: query
+          schema: { type: string }
+        - name: currentAreaId
+          in: query
+          schema: { type: integer }
+        - name: conditionStatus
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+    post:
+      summary: Create pallet
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePalletRequest'
+  /pallets/lookup/{barcode}:
+    get:
+      summary: Lookup pallet by barcode
+  /pallets/{id}:
+    get:
+      summary: Get pallet by ID
+    patch:
+      summary: Update pallet (including condition status)
+    delete:
+      summary: Soft delete pallet
+
+  /movements:
+    get:
+      summary: List movements (paginated, filterable)
+    post:
+      summary: Start movement (Move Out)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMovementRequest'
+  /movements/{id}/confirm:
+    post:
+      summary: Confirm movement (Move In)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmMovementRequest'
+  /movements/{id}:
+    get:
+      summary: Get movement by ID
+
+  /users:
+    get:
+      summary: List users (admin)
+    post:
+      summary: Create user (admin)
+  /users/{id}:
+    get:
+      summary: Get user
+    patch:
+      summary: Update user
+  /roles:
+    get:
+      summary: List roles
+
+  /reports/area-summary:
+    get:
+      summary: Area summary report
+  /reports/pallet-status:
+    get:
+      summary: Pallet status report
+  /reports/movement-history:
+    get:
+      summary: Movement history report
+  /reports/lost-damaged:
+    get:
+      summary: Lost/Damaged list
+  /reports/overdue-inbound:
+    get:
+      summary: Overdue inbound movements
+
+  /exports:
+    post:
+      summary: Request CSV export (background job)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reportType: { type: string }
+                parameters: { type: object }
+    get:
+      summary: List user's exports
+  /exports/{id}/download:
+    get:
+      summary: Download export file
+
+  /audit-log:
+    get:
+      summary: Query audit log (admin)
+      parameters:
+        - name: entityType
+          in: query
+          schema: { type: string }
+        - name: entityId
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }

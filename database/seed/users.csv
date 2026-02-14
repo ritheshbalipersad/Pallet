@@ -1,0 +1,5 @@
+user_id,username,display_name,email,role_id,is_active
+1,admin,Admin User,admin@example.com,1,true
+2,operator1,Operator One,op1@example.com,2,true
+3,operator2,Operator Two,op2@example.com,2,true
+4,viewer,View Only,viewer@example.com,3,true

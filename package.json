@@ -1,0 +1,22 @@
+{
+  "name": "palletms",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:docker\" \"npm run dev:api\" \"npm run dev:frontend\"",
+    "start:dev": "concurrently \"npm run dev:docker\" \"npm run dev:api\" \"npm run dev:frontend\"",
+    "dev:docker": "docker compose up -d redis",
+    "dev:api": "cd backend && npm run start:dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "migrate": "cd backend && npm run migration:run",
+    "seed": "cd backend && npm run seed:run",
+    "test": "cd backend && npm run test && cd ../frontend && npm run test",
+    "test:e2e": "cd frontend && npm run test:e2e",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "docker compose up -d"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

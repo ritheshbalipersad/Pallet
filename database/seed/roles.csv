@@ -1,0 +1,4 @@
+role_id,name,permissions
+1,Admin,["areas:write","pallets:write","movements:write","users:write","reports:read","audit:read","exports:read"]
+2,Operator,["areas:read","pallets:write","movements:write","reports:read","exports:read"]
+3,Viewer,["areas:read","pallets:read","movements:read","reports:read"]

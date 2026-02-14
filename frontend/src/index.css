@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-900 text-slate-100 antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area for mobile notch */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
