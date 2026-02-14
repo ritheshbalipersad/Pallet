@@ -68,10 +68,23 @@ export const palletsApi = {
 };
 
 export const movementsApi = {
-  list: (params?: { palletId?: number; movementStatus?: string; page?: number; limit?: number }) => {
+  list: (params?: {
+    palletId?: number;
+    movementStatus?: string;
+    fromAreaId?: number;
+    toAreaId?: number;
+    orderBy?: 'out_at' | 'in_at' | 'created_at';
+    order?: 'ASC' | 'DESC';
+    page?: number;
+    limit?: number;
+  }) => {
     const q = new URLSearchParams();
     if (params?.palletId != null) q.set('palletId', String(params.palletId));
     if (params?.movementStatus) q.set('movementStatus', params.movementStatus);
+    if (params?.fromAreaId != null) q.set('fromAreaId', String(params.fromAreaId));
+    if (params?.toAreaId != null) q.set('toAreaId', String(params.toAreaId));
+    if (params?.orderBy) q.set('orderBy', params.orderBy);
+    if (params?.order) q.set('order', params.order);
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
     return api<{ items: unknown[]; total: number }>(`/movements?${q}`);

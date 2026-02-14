@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { palletsApi, areasApi, movementsApi } from '../api/client';
+import BarcodeInput from '../components/BarcodeInput';
 
 export default function MoveOut() {
   const location = useLocation();
@@ -72,13 +73,13 @@ export default function MoveOut() {
       <h2 className="text-lg font-semibold text-slate-100">Move out</h2>
       <div className="rounded-xl border border-slate-600 bg-slate-800 p-4">
         <label className="block text-sm text-slate-400">Pallet barcode</label>
-        <div className="mt-1 flex gap-2">
-          <input
-            type="text"
+        <div className="mt-1 flex gap-2 items-start">
+          <BarcodeInput
             value={barcode}
-            onChange={(e) => { setBarcode(e.target.value); setPallet(null); }}
+            onChange={(v) => { setBarcode(v); setPallet(null); }}
             placeholder="Scan or enter"
-            className="flex-1 rounded border border-slate-600 bg-slate-700 px-3 py-2 text-white"
+            compact
+            inputClassName="flex-1"
           />
           <button type="button" onClick={handleLookup} className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500">
             Lookup

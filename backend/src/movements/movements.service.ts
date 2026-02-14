@@ -46,24 +46,34 @@ export class MovementsService {
   async findPaginated(filters: {
     palletId?: number;
     movementStatus?: string;
+    fromAreaId?: number;
+    toAreaId?: number;
+    orderBy?: 'out_at' | 'in_at' | 'created_at';
+    order?: 'ASC' | 'DESC';
     page?: number;
     limit?: number;
   }) {
     const pageNum = Math.max(1, filters.page ?? 1);
     const limitNum = Math.min(100, Math.max(1, filters.limit ?? 20));
     const statusFilter = filters.movementStatus?.trim();
+    const orderBy = filters.orderBy ?? 'out_at';
+    const order = (filters.order ?? 'DESC').toUpperCase() as 'ASC' | 'DESC';
 
     const countQb = this.repo.createQueryBuilder('m');
     if (filters.palletId != null) countQb.andWhere('m.pallet_id = :pid', { pid: filters.palletId });
     if (statusFilter) countQb.andWhere('LOWER(LTRIM(RTRIM(m.movement_status))) = LOWER(:st)', { st: statusFilter });
+    if (filters.fromAreaId != null) countQb.andWhere('m.from_area_id = :fromAreaId', { fromAreaId: filters.fromAreaId });
+    if (filters.toAreaId != null) countQb.andWhere('m.to_area_id = :toAreaId', { toAreaId: filters.toAreaId });
     const total = await countQb.getCount();
 
     const idQb = this.repo
       .createQueryBuilder('m')
-      .select(['m.movement_id AS id'])
-      .orderBy('m.out_at', 'DESC');
+      .select(['m.movement_id AS id']);
     if (filters.palletId != null) idQb.andWhere('m.pallet_id = :pid', { pid: filters.palletId });
     if (statusFilter) idQb.andWhere('LOWER(LTRIM(RTRIM(m.movement_status))) = LOWER(:st)', { st: statusFilter });
+    if (filters.fromAreaId != null) idQb.andWhere('m.from_area_id = :fromAreaId', { fromAreaId: filters.fromAreaId });
+    if (filters.toAreaId != null) idQb.andWhere('m.to_area_id = :toAreaId', { toAreaId: filters.toAreaId });
+    idQb.orderBy(`m.${orderBy}`, order);
     idQb.skip((pageNum - 1) * limitNum).take(limitNum);
     const idRows = await idQb.getRawMany<Record<string, unknown>>();
     const ids = idRows
@@ -75,7 +85,7 @@ export class MovementsService {
     const items = await this.repo.find({
       where: { movementId: In(ids) },
       relations: ['pallet', 'fromArea', 'toArea', 'outByUser', 'inByUser'],
-      order: { outAt: 'DESC' },
+      order: { [orderBy === 'out_at' ? 'outAt' : orderBy === 'in_at' ? 'inAt' : 'createdAt']: order },
     });
     items.sort((a, b) => ids.indexOf(a.movementId) - ids.indexOf(b.movementId));
     return { items, total, page: pageNum, limit: limitNum };

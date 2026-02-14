@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth';
 const nav = [
   { to: '/', label: 'Home' },
   { to: '/scan', label: 'Scan' },
+  { to: '/movements', label: 'Movements' },
   { to: '/reports', label: 'Reports' },
   { to: '/exports', label: 'Exports' },
 ];

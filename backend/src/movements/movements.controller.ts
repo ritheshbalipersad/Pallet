@@ -16,12 +16,20 @@ export class MovementsController {
   async list(
     @Query('palletId') palletId?: string,
     @Query('movementStatus') movementStatus?: string,
+    @Query('fromAreaId') fromAreaId?: string,
+    @Query('toAreaId') toAreaId?: string,
+    @Query('orderBy') orderBy?: 'out_at' | 'in_at' | 'created_at',
+    @Query('order') order?: 'ASC' | 'DESC',
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.movements.findPaginated({
       palletId: palletId ? parseInt(palletId, 10) : undefined,
       movementStatus,
+      fromAreaId: fromAreaId ? parseInt(fromAreaId, 10) : undefined,
+      toAreaId: toAreaId ? parseInt(toAreaId, 10) : undefined,
+      orderBy,
+      order,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });

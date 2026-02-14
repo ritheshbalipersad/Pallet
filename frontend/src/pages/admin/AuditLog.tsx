@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { auditApi } from '../../api/client';
+import BarcodeInput from '../../components/BarcodeInput';
 
 type Entry = { auditId: string; entityType: string; entityId: string; action: string; changedBy?: number; changedAt: string; beforeData?: unknown; afterData?: unknown };
 
@@ -30,6 +31,7 @@ export default function AuditLog() {
   const [palletBarcode, setPalletBarcode] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -66,13 +68,15 @@ export default function AuditLog() {
           placeholder="Entity type (e.g. Pallet, Area)"
           className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-white w-48"
         />
-        <input
-          type="text"
-          value={palletBarcode}
-          onChange={(e) => { setPalletBarcode(e.target.value); setPage(1); }}
-          placeholder="Pallet barcode"
-          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-white w-40"
-        />
+        <div className="w-44">
+          <BarcodeInput
+            value={palletBarcode}
+            onChange={(v) => { setPalletBarcode(v); setPage(1); }}
+            placeholder="Pallet barcode"
+            compact
+            inputClassName="w-full"
+          />
+        </div>
         <button type="button" onClick={() => setPage(1)} className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500">
           Filter
         </button>
@@ -95,10 +99,19 @@ export default function AuditLog() {
                   )}
                   <span className="text-slate-500">{new Date(e.changedAt).toLocaleString()}</span>
                   {e.changedBy != null && <span className="text-slate-500">by user {e.changedBy}</span>}
+                  {(e.beforeData != null || e.afterData != null) && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId((prev) => (prev === e.auditId ? null : e.auditId))}
+                      className="rounded border border-slate-500 px-2 py-0.5 text-xs text-slate-400 hover:bg-slate-700"
+                    >
+                      {expandedId === e.auditId ? 'Hide details' : 'Show details'}
+                    </button>
+                  )}
                 </div>
-                {(e.beforeData != null || e.afterData != null) && (
-                  <pre className="mt-2 max-h-24 overflow-auto rounded bg-slate-900 p-2 text-xs text-slate-400">
-                    {JSON.stringify({ before: e.beforeData, after: e.afterData }, null, 1)}
+                {expandedId === e.auditId && (e.beforeData != null || e.afterData != null) && (
+                  <pre className="mt-2 max-h-48 overflow-auto rounded bg-slate-900 p-2 text-xs text-slate-400">
+                    {JSON.stringify({ before: e.beforeData, after: e.afterData }, null, 2)}
                   </pre>
                 )}
               </li>

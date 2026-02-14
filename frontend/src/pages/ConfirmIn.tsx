@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { palletsApi, movementsApi } from '../api/client';
+import BarcodeInput from '../components/BarcodeInput';
 
 type Movement = {
   movementId: number;
@@ -106,13 +107,13 @@ export default function ConfirmIn() {
       <h2 className="text-lg font-semibold text-slate-100">Confirm in</h2>
       <div className="rounded-xl border border-slate-600 bg-slate-800 p-4">
         <label className="block text-sm text-slate-400">Scan pallet barcode</label>
-        <div className="mt-1 flex gap-2">
-          <input
-            type="text"
+        <div className="mt-1 flex gap-2 items-start">
+          <BarcodeInput
             value={barcode}
-            onChange={(e) => { setBarcode(e.target.value); setSelected(null); setError(''); }}
+            onChange={(v) => { setBarcode(v); setSelected(null); setError(''); }}
             placeholder="Barcode"
-            className="flex-1 rounded border border-slate-600 bg-slate-700 px-3 py-2 text-white"
+            compact
+            inputClassName="flex-1"
           />
           <button type="button" onClick={handleLookup} className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500">
             Lookup

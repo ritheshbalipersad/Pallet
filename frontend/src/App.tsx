@@ -14,6 +14,7 @@ import Users from './pages/admin/Users';
 import AuditLog from './pages/admin/AuditLog';
 import Reports from './pages/Reports';
 import Exports from './pages/Exports';
+import Movements from './pages/Movements';
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="add-pallet" element={<AddPallet />} />
         <Route path="move-out" element={<MoveOut />} />
         <Route path="confirm-in" element={<ConfirmIn />} />
+        <Route path="movements" element={<Movements />} />
         <Route path="reports" element={<Reports />} />
         <Route path="exports" element={<Exports />} />
         <Route path="admin/areas" element={<Areas />} />

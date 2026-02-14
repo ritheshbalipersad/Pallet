@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { palletsApi, areasApi } from '../api/client';
+import BarcodeInput from '../components/BarcodeInput';
 
 export default function AddPallet() {
   const location = useLocation();
@@ -54,12 +55,13 @@ export default function AddPallet() {
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-600 bg-slate-800 p-4">
         <div>
           <label className="block text-sm text-slate-400">Barcode *</label>
-          <input
-            type="text"
+          <BarcodeInput
             value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-white"
+            onChange={setBarcode}
+            placeholder="Scan or enter"
+            compact
             required
+            className="mt-1"
           />
         </div>
         <div>
