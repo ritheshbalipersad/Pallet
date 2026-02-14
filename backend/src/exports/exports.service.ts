@@ -24,17 +24,34 @@ export class ExportsService {
   }
 
   async create(reportType: string, parameters: Record<string, unknown>, userId: number) {
-    const exp = this.repo.create({
+    const result = await this.repo.insert({
       reportType,
-      parameters,
+      parameters: parameters ?? {},
       generatedBy: userId,
       status: 'Pending',
-    });
-    return this.repo.save(exp);
+    } as Parameters<Repository<Export>['insert']>[0]);
+    const raw = result.identifiers?.[0] as { export_id?: number; exportId?: number } | undefined;
+    const exportId = raw?.export_id ?? raw?.exportId;
+    if (exportId == null) {
+      const row = await this.repo
+        .createQueryBuilder('e')
+        .select('e.export_id', 'id')
+        .where('e.generated_by = :uid', { uid: userId })
+        .orderBy('e.export_id', 'DESC')
+        .limit(1)
+        .getRawOne<{ id: number }>();
+      const id = row?.id;
+      if (id == null) throw new Error('Export created but could not get id');
+      const exp = await this.repo.findOne({ where: { exportId: id } });
+      return exp ?? { exportId: id, reportType, status: 'Pending', generatedBy: userId, generatedAt: new Date(), filePath: null, parameters };
+    }
+    const exp = await this.repo.findOne({ where: { exportId } });
+    return exp ?? { exportId, reportType, status: 'Pending', generatedBy: userId, generatedAt: new Date(), filePath: null, parameters };
   }
 
   async listByUser(userId: number, page = 1, limit = 20) {
-    const [items, total] = await this.repo.findAndCount({
+    const total = await this.repo.count({ where: { generatedBy: userId } });
+    const items = await this.repo.find({
       where: { generatedBy: userId },
       order: { generatedAt: 'DESC' },
       skip: (page - 1) * limit,
@@ -62,52 +79,69 @@ export class ExportsService {
     const exp = await this.repo.findOne({ where: { exportId } });
     if (!exp) throw new NotFoundException('Export not found');
     let rows: Record<string, unknown>[] = [];
-    switch (exp.reportType) {
-      case 'area-summary':
-        rows = (await this.reports.areaSummary()) as unknown as Record<string, unknown>[];
-        break;
-      case 'pallet-status':
-        rows = (await this.reports.palletStatus()) as unknown as Record<string, unknown>[];
-        break;
-      case 'movement-history': {
-        const p = exp.parameters as { from?: string; to?: string; limit?: number };
-        rows = (await this.reports.movementHistory({
-          from: p.from ? new Date(p.from) : undefined,
-          to: p.to ? new Date(p.to) : undefined,
-          limit: p.limit,
-        })) as unknown as Record<string, unknown>[];
-        break;
+    try {
+      switch (exp.reportType) {
+        case 'area-summary':
+          rows = (await this.reports.areaSummary()) as unknown as Record<string, unknown>[];
+          break;
+        case 'pallet-status':
+          rows = (await this.reports.palletStatus()) as unknown as Record<string, unknown>[];
+          break;
+        case 'movement-history': {
+          const p = (exp.parameters || {}) as { from?: string; to?: string; limit?: number };
+          rows = (await this.reports.movementHistory({
+            from: p.from ? new Date(p.from) : undefined,
+            to: p.to ? new Date(p.to) : undefined,
+            limit: p.limit,
+          })) as unknown as Record<string, unknown>[];
+          break;
+        }
+        case 'lost-damaged':
+          rows = (await this.reports.lostDamaged()) as unknown as Record<string, unknown>[];
+          break;
+        case 'overdue-inbound':
+          rows = (await this.reports.overdueInbound()) as unknown as Record<string, unknown>[];
+          break;
+        default:
+          await this.setFailed(exportId);
+          throw new Error('Unknown report type');
       }
-      case 'lost-damaged':
-        rows = (await this.reports.lostDamaged()) as unknown as Record<string, unknown>[];
-        break;
-      case 'overdue-inbound':
-        rows = (await this.reports.overdueInbound()) as unknown as Record<string, unknown>[];
-        break;
-      default:
-        await this.setFailed(exportId);
-        throw new Error('Unknown report type');
+      const csv = this.toCsv(Array.isArray(rows) ? rows : []);
+      const filename = `export_${exportId}_${Date.now()}.csv`;
+      const filePath = path.join(this.storagePath, filename);
+      fs.mkdirSync(this.storagePath, { recursive: true });
+      fs.writeFileSync(filePath, csv, 'utf8');
+      await this.setCompleted(exportId, filePath);
+      return filePath;
+    } catch (err) {
+      await this.setFailed(exportId);
+      throw err;
     }
-    const csv = this.toCsv(rows);
-    const filename = `export_${exportId}_${Date.now()}.csv`;
-    const filePath = path.join(this.storagePath, filename);
-    fs.writeFileSync(filePath, csv, 'utf8');
-    await this.setCompleted(exportId, filePath);
-    return filePath;
   }
 
   private toCsv(rows: Record<string, unknown>[]): string {
     if (rows.length === 0) return '';
-    const headers = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+    const safeValue = (v: unknown): string => {
+      if (v == null) return '';
+      if (typeof v === 'object') {
+        if (v instanceof Date) return v.toISOString();
+        try {
+          const o = v as Record<string, unknown>;
+          if (typeof o.name === 'string') return o.name;
+          if (typeof o.barcode === 'string') return o.barcode;
+          return JSON.stringify(v);
+        } catch {
+          return '';
+        }
+      }
+      const s = String(v);
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = [...new Set(rows.flatMap((r) => Object.keys(r).filter((k) => typeof r[k] !== 'function')))];
+    const escape = (s: string) =>
+      s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
     const line = (obj: Record<string, unknown>) =>
-      headers
-        .map((h) => {
-          const v = obj[h];
-          if (v == null) return '';
-          const s = String(v);
-          return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-        })
-        .join(',');
+      headers.map((h) => escape(safeValue(obj[h]))).join(',');
     return [headers.join(','), ...rows.map(line)].join('\n');
   }
 

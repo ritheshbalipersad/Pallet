@@ -12,6 +12,7 @@ export default function Reports() {
   const [overdue, setOverdue] = useState<unknown[]>([]);
   const [tab, setTab] = useState<'area' | 'status' | 'movement' | 'lost' | 'overdue'>('area');
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     reportsApi.areaSummary().then(setAreaSummary);
@@ -23,9 +24,12 @@ export default function Reports() {
 
   async function handleExport(reportType: string) {
     setExporting(true);
+    setExportError('');
     try {
       await exportsApi.create({ reportType });
       window.location.href = '/exports';
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export request failed');
     } finally {
       setExporting(false);
     }
@@ -42,6 +46,7 @@ export default function Reports() {
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <h2 className="text-lg font-semibold text-slate-100">Reports</h2>
+      {exportError && <p className="text-sm text-red-400">{exportError}</p>}
       <div className="flex gap-2 overflow-x-auto">
         {tabs.map((t) => (
           <button
