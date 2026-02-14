@@ -41,25 +41,24 @@ CREATE DATABASE PalletDB;
 
 ### Run migrations
 
-From the project root (or `backend` folder), set SQL Server env and run migrations:
+Configure SQL Server in `backend\.env` (see [Environment variables](#6-environment-variables-backend) below), then from the **repo root**:
+
+```cmd
+npm run migrate
+npm run seed
+```
+
+Or from the `backend` folder:
 
 ```cmd
 cd backend
-set DB_TYPE=mssql
-set MSSQL_SERVER=localhost
-set MSSQL_DATABASE=PalletDB
-set MSSQL_USER=your_user
-set MSSQL_PASSWORD=your_password
-set MSSQL_TRUST_SERVER_CERTIFICATE=true
-
 npm run migration:run
 npm run seed:run
 ```
 
-Or use a `backend\.env` file:
+Example `backend\.env` for SQL Server:
 
 ```env
-DB_TYPE=mssql
 MSSQL_SERVER=localhost
 MSSQL_DATABASE=PalletDB
 MSSQL_USER=your_user
@@ -68,13 +67,7 @@ MSSQL_TRUST_SERVER_CERTIFICATE=true
 MSSQL_ENCRYPT=false
 ```
 
-Then:
-
-```cmd
-cd backend
-npm run migration:run
-npm run seed:run
-```
+For **Windows Authentication** (no SQL user/password), set `MSSQL_TRUSTED_CONNECTION=true` and omit `MSSQL_USER`/`MSSQL_PASSWORD`. For a named instance (e.g. `.\SQLEXPRESS`), set `MSSQL_INSTANCE=SQLEXPRESS` and ensure SQL Server Browser is running.
 
 ---
 
@@ -109,7 +102,7 @@ Run the API as a normal Node process (e.g. under a Windows Service or PM2):
 cd backend
 set NODE_ENV=production
 set FRONTEND_URL=https://your-server.domain.com
-node dist/main.js
+node dist/main
 ```
 
 Keep this process running (or use **NSSM** / **PM2** / **Windows Service** to run it in the background). The API will listen on port 3000 (or `PORT` / `API_PORT`).
@@ -117,10 +110,9 @@ Keep this process running (or use **NSSM** / **PM2** / **Windows Service** to ru
 ### Option B – Under IIS with iisnode
 
 1. Install **iisnode** (x64) and ensure the IIS site has the right handler.
-2. In IIS, create an **Application** (e.g. `api`) under your site, pointing to the `backend` folder.
-3. The `backend\web.config` is already set up for iisnode; it runs `dist/main.js`.
-4. Ensure the app pool identity can read the backend folder and that Node is in `PATH` (or set `nodeProcessCommandLine` in `web.config`).
-5. The API will be available at `https://your-server/api/` (or whatever path the application has).
+2. In IIS, create an **Application** (e.g. `api`) under your site, pointing to the **backend** folder (the one containing `dist\` and `web.config`).
+3. The `backend\web.config` is already set up for iisnode; it runs `dist/main.js`. Ensure the app pool identity can read the backend folder and that Node.js is in `PATH` (or set `nodeProcessCommandLine` in `web.config`).
+4. The API will be available at `https://your-server/api/` (or whatever path the application has).
 
 ---
 
@@ -144,31 +136,33 @@ Keep this process running (or use **NSSM** / **PM2** / **Windows Service** to ru
 
 ## 6. Environment variables (backend)
 
-For **production** on Windows Server with SQL Server, set these (in `backend\.env`, system env, or IIS Application Settings if using iisnode):
+For **production** on Windows Server with SQL Server, set these in `backend\.env`, system env, or IIS Application Settings (if using iisnode):
 
 | Variable | Description |
 |----------|-------------|
 | `NODE_ENV` | `production` |
-| `DB_TYPE` | `mssql` |
-| `MSSQL_SERVER` | SQL Server host (e.g. `localhost` or `.\SQLEXPRESS`) |
+| `MSSQL_SERVER` | SQL Server host (e.g. `localhost`; for named instance use host only and set `MSSQL_INSTANCE`) |
 | `MSSQL_DATABASE` | `PalletDB` |
-| `MSSQL_USER` | SQL login name |
-| `MSSQL_PASSWORD` | SQL login password |
+| `MSSQL_USER` | SQL login name (omit when using Windows auth) |
+| `MSSQL_PASSWORD` | SQL login password (omit when using Windows auth) |
+| `MSSQL_TRUSTED_CONNECTION` | `true` for Windows Authentication |
+| `MSSQL_INSTANCE` | Named instance (e.g. `SQLEXPRESS`); ensure SQL Server Browser is running |
 | `MSSQL_TRUST_SERVER_CERTIFICATE` | `true` if using self-signed cert |
-| `MSSQL_ENCRYPT` | `false` for local dev, `true` for encrypted connections |
+| `MSSQL_ENCRYPT` | `false` for local/dev, `true` for encrypted connections |
 | `JWT_SECRET` | Strong secret for JWT signing |
-| `FRONTEND_URL` | Full URL of the frontend (e.g. `https://your-server.domain.com`) |
+| `FRONTEND_URL` | Full URL of the frontend (e.g. `https://your-server.domain.com`) for CORS |
 | `API_PORT` or `PORT` | Port the API listens on (default 3000) |
+| `REDIS_URL` | Optional; only if using background jobs (e.g. `redis://localhost:6379`) |
 
 ---
 
 ## 7. Checklist
 
-- [ ] SQL Server database created and migrations/seed run with `DB_TYPE=mssql`
-- [ ] Backend `.env` (or env) set for SQL Server and production
-- [ ] Backend built (`backend\dist\`) and running (standalone or iisnode)
-- [ ] Frontend built (`frontend\dist\`) and deployed to IIS with `deploy\web.config`
-- [ ] URL Rewrite (and ARR for proxy) installed and proxy rule pointing to the API
-- [ ] CORS: `FRONTEND_URL` matches the URL users use to open the app
+- [ ] SQL Server database created; migrations and seed run from repo root (`npm run migrate`, `npm run seed`) or from `backend` (`npm run migration:run`, `npm run seed:run`)
+- [ ] `backend\.env` set for SQL Server and production (no `DB_TYPE`; use `MSSQL_*` and optionally `MSSQL_TRUSTED_CONNECTION=true` for Windows auth)
+- [ ] Backend built (`backend\dist\`) and running (standalone with `node dist/main` or under iisnode)
+- [ ] Frontend built (`frontend\dist\`) and deployed to IIS site root with `deploy\web.config` copied into the same folder as `index.html`
+- [ ] IIS URL Rewrite and ARR installed; ARR proxy enabled; proxy rule in `deploy\web.config` points to the API (e.g. `http://localhost:3000/api/{R:1}` for standalone)
+- [ ] CORS: `FRONTEND_URL` in backend matches the URL users use to open the app
 
 After that, the app can run on a standard Windows Server with IIS and SQL Server only.
